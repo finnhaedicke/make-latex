@@ -1,0 +1,146 @@
+###################################################
+# General purpose Makefile for LaTeX-Documents    #
+#                                                 #
+# Based on the makefile written by Daniel Ciaglia #
+# http://www.sigterm.de/misc/src/Makefile-latex   #
+#                                                 #
+# Modified by Finn                                #
+# Modified by Daniel                              #
+###################################################
+
+##### Variables #############
+#############################
+
+# empty vars for dependencies
+BIB=
+PICS=
+
+# dependencies of the Document
+-include $(TARGET).d 
+
+
+# ATTENTION!
+# File-extensions to delete recursive from here
+LATEX_EXTENSION := aux toc log lof lot lol bbl blg out ind ilg idx lof lot loAL d
+# file with list of generated images to clean up
+ifndef GEN_IMAGES
+GEN_IMAGES := figures/generated_images
+endif
+
+
+### check images
+REALPICS= \
+	$(foreach pic,$(PICS), \
+		$(shell test -f $(pic).png && echo $(pic).png  ||  \
+		      { test -f $(pic).jpg && echo $(pic).jpg ; } ||   \
+		      echo $(pic).pdf )\
+	)
+		
+
+#############################
+#############################
+
+LATEX := $(shell which pdflatex)
+PDFLATEX := $(LATEX) \
+	-file-line-error \
+	-halt-on-error   \
+	-interaction=batchmode \
+
+RERUN := Rerun to get cross-references right
+DEP_TEX:=  $(dir $(lastword $(MAKEFILE_LIST)))/depends_tex.awk
+
+# TEX dependencies $(DEP_TEX)
+%.d : %.tex
+	@ awk -f $(DEP_TEX) $*.tex > $*.d
+
+# PDF
+%.pdf: %.tex  $(BIB) $(REALPICS) $(STYLES) $(LATEX_INDEXFILE)
+	@ awk -f $(DEP_TEX) $*.tex > $*.d
+ifndef LATEX
+	$(error you need to have pdflatex installed and in your path)
+endif
+	@ $(PDFLATEX) $* >/dev/null || { cat $*.log; false; }
+	-@ bibtex $*
+	@ $(PDFLATEX) $* >/dev/null || { cat $*.log; false; }
+ifdef LATEX_INDEXFILE
+	-@ makeindex -c -g -s $ $*
+	@ $(PDFLATEX) $* >/dev/null || { cat $*.log; false; }
+endif
+	@latex_count=10 ; \
+	  while \
+	  	   grep -q '$(RERUN)' $*.log \
+		&& [ $$latex_count -gt 0 ] ;\
+	    do \
+	      $(PDFLATEX) $* >/dev/null || { cat $*.log; false; }; \
+	      latex_count=`expr $$latex_count - 1` ; \
+	    done
+	@cat $*.log
+
+
+
+# Clean
+clean: clean-latex
+clean-latex: $(GEN_IMAGES)
+	@rm -f $(DEP)
+	@rm -fv `cat $(GEN_IMAGES)`
+	@rm -fv $(GEN_IMAGES)
+
+.PHONY: all clean ps pdf everything report
+.SUFFIXES: .dvi .ps .pdf .tex .d
+.SECONDARY: $(DEP) \
+	$(PICS:=.eps) $(PICS:=.pdf) $(PICS:=.svg) \
+	$(TARGET).ps  $(TARGET).dvi $(TARGET).d   \
+
+
+QE:=2>/dev/null
+
+DIA      := $(shell which dia      $(QE))
+INKSCAPE := $(shell which inkscape $(QE))
+CONVERT  := $(shell which convert  $(QE))
+FIG2DEV  := $(shell which fig2dev  $(QE))
+EPS2PDF  := $(shell which a2ping   $(QE) || which epstopdf $(QE) )
+
+
+%.pdf: %.fig
+ifndef FIG2DEV
+	$(error "You need fig2dev installed in your path")
+endif
+	@ echo $@ >> $(GEN_IMAGES)
+	$(FIG2DEV) -L pdf $< $@
+
+ifdef INKSCAPE
+%.eps: %.svg 
+	@ echo $@ >> $(GEN_IMAGES)
+	$(INKSCAPE) -z -T -E $@ $< 
+%.svg: %.dia 
+ifndef DIA
+	$(error "You need dia installed and in your path!")
+endif
+	@ echo $@ >> $(GEN_IMAGES)
+	$(DIA) -e $@ -t svg $<
+else
+%.eps: %.dia
+ifndef DIA
+	$(error "You need dia installed and in your path!")
+endif
+	@ echo $@ >> $(GEN_IMAGES)
+	$(DIA) -e $@ -t eps $<
+
+%.eps: %.svg
+ifndef CONVERT
+	$(error "You need convert (ImageMagick) installed and in your path!")
+endif
+	@ echo $@ >> $(GEN_IMAGES)
+	$(CONVERT) $< $@
+endif
+
+%.pdf: %.eps 
+ifndef EPS2PDF
+	$(error "You need a2ping or epstopdf installed and in your path!")
+endif
+	@ echo $@ >> $(GEN_IMAGES)
+	$(EPS2PDF) $< 
+
+$(GEN_IMAGES):
+	mkdir -p $(dir $@)
+	touch $@
