@@ -16,12 +16,18 @@ BIB=
 PICS=
 
 # dependencies of the Document
--include $(TARGET).d 
+define build_latex
+-include $(1).d 
+
+clean-latex: clean-latex-$(1)
+clean-latex-$(1): $(GEN_IMAGES)
+	@rm -f $(1).{${LATEX_EXTENSION}}
+endef
 
 
 # ATTENTION!
-# File-extensions to delete recursive from here
-LATEX_EXTENSION := aux toc log lof lot lol bbl blg out ind ilg idx lof lot loAL d
+# File-extensions to delete on clean and clean-latex
+LATEX_EXTENSION := aux,toc,log,lof,lot,lol,bbl,blg,out,ind,ilg,idx,lof,lot,loAL,d
 # file with list of generated images to clean up
 ifndef GEN_IMAGES
 GEN_IMAGES := figures/generated_images
@@ -40,8 +46,8 @@ REALPICS= \
 #############################
 #############################
 
-LATEX := $(shell which pdflatex)
-PDFLATEX := $(LATEX) \
+PDFLATEX := $(shell which pdflatex)
+PDFLATEX_CMD := $(PDFLATEX) \
 	-file-line-error \
 	-halt-on-error   \
 	-interaction=batchmode \
@@ -56,22 +62,22 @@ DEP_TEX:=  $(dir $(lastword $(MAKEFILE_LIST)))/depends_tex.awk
 # PDF
 %.pdf: %.tex  $(BIB) $(REALPICS) $(STYLES) $(LATEX_INDEXFILE)
 	@ awk -f $(DEP_TEX) $*.tex > $*.d
-ifndef LATEX
+ifndef PDFLATEX
 	$(error you need to have pdflatex installed and in your path)
 endif
-	@ $(PDFLATEX) $* >/dev/null || { cat $*.log; false; }
+	@ $(PDFLATEX_CMD) $* >/dev/null || { cat $*.log; false; }
 	-@ bibtex $*
-	@ $(PDFLATEX) $* >/dev/null || { cat $*.log; false; }
+	@ $(PDFLATEX_CMD) $* >/dev/null || { cat $*.log; false; }
 ifdef LATEX_INDEXFILE
 	-@ makeindex -c -g -s $ $*
-	@ $(PDFLATEX) $* >/dev/null || { cat $*.log; false; }
+	@ $(PDFLATEX_CMD) $* >/dev/null || { cat $*.log; false; }
 endif
 	@latex_count=10 ; \
 	  while \
 	  	   grep -q '$(RERUN)' $*.log \
 		&& [ $$latex_count -gt 0 ] ;\
 	    do \
-	      $(PDFLATEX) $* >/dev/null || { cat $*.log; false; }; \
+	      $(PDFLATEX_CMD) $* >/dev/null || { cat $*.log; false; }; \
 	      latex_count=`expr $$latex_count - 1` ; \
 	    done
 	@cat $*.log
@@ -81,15 +87,14 @@ endif
 # Clean
 clean: clean-latex
 clean-latex: $(GEN_IMAGES)
-	@rm -f $(DEP)
 	@rm -fv `cat $(GEN_IMAGES)`
 	@rm -fv $(GEN_IMAGES)
 
 .PHONY: all clean ps pdf everything report
 .SUFFIXES: .dvi .ps .pdf .tex .d
-.SECONDARY: $(DEP) \
+.SECONDARY: \
 	$(PICS:=.eps) $(PICS:=.pdf) $(PICS:=.svg) \
-	$(TARGET).ps  $(TARGET).dvi $(TARGET).d   \
+	$(TARGET).ps  \
 
 
 QE:=2>/dev/null
@@ -109,6 +114,9 @@ endif
 	$(FIG2DEV) -L pdf $< $@
 
 ifdef INKSCAPE
+%.pdf: %.svg 
+	@ echo $@ >> $(GEN_IMAGES)
+	$(INKSCAPE) -z -A -E $@ $< 
 %.eps: %.svg 
 	@ echo $@ >> $(GEN_IMAGES)
 	$(INKSCAPE) -z -T -E $@ $< 
@@ -144,3 +152,5 @@ endif
 $(GEN_IMAGES):
 	mkdir -p $(dir $@)
 	touch $@
+
+# vim: ft=make
