@@ -114,9 +114,8 @@ END {
 #	}
 	gsub( ".tex", "", TARGET )
 	# ergebnisse ausgeben
-	print TARGET ".pdf : " TARGET ".tex \\"
+	print TARGET ".pdf : " TARGET ".tex " BIB " \\"
 	print   TEX "\n"
-	print  "BIB  +=",  BIB
 	print  "PICS +=", PICS
 }
 

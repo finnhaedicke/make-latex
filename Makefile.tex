@@ -12,7 +12,6 @@
 #############################
 
 # empty vars for dependencies
-BIB=
 PICS=
 
 # dependencies of the Document
@@ -60,7 +59,7 @@ DEP_TEX:=  $(dir $(lastword $(MAKEFILE_LIST)))/depends_tex.awk
 	@ awk -f $(DEP_TEX) $*.tex > $*.d
 
 # PDF
-%.pdf: %.tex  $(BIB) $(REALPICS) $(STYLES) $(LATEX_INDEXFILE)
+%.pdf: %.tex  $(REALPICS) $(STYLES) $(LATEX_INDEXFILE)
 	@ awk -f $(DEP_TEX) $*.tex > $*.d
 ifndef PDFLATEX
 	$(error you need to have pdflatex installed and in your path)
