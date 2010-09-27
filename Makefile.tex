@@ -29,14 +29,15 @@ endef
 LATEX_EXTENSION := aux,toc,log,lof,lot,lol,bbl,blg,out,ind,ilg,idx,lof,lot,loAL,d
 # file with list of generated images to clean up
 ifndef GEN_IMAGES
-GEN_IMAGES := figures/generated_images
+GEN_IMAGES := .generated_images
 endif
 
 
 ### check images
 REALPICS= \
 	$(foreach pic,$(PICS), \
-		$(shell test -f $(pic).png && echo $(pic).png  ||  \
+		$(shell test -f $(pic) && echo $(pic) || \
+		      { test -f $(pic).png && echo $(pic).png  ||  \
 		      { test -f $(pic).jpg && echo $(pic).jpg ; } ||   \
 		      echo $(pic).pdf )\
 	)
@@ -80,6 +81,7 @@ endif
 	      latex_count=`expr $$latex_count - 1` ; \
 	    done
 	@cat $*.log
+	@echo $^
 
 
 
@@ -102,8 +104,15 @@ DIA      := $(shell which dia      $(QE))
 INKSCAPE := $(shell which inkscape $(QE))
 CONVERT  := $(shell which convert  $(QE))
 FIG2DEV  := $(shell which fig2dev  $(QE))
+GNUPLOT  := $(shell which gnuplot  $(QE))
 EPS2PDF  := $(shell which a2ping   $(QE) || which epstopdf $(QE) )
 
+%.eps: %.plot %.dat
+ifndef GNUPLOT
+	$(error "You need gnuplot installed and in your path!")
+endif
+	@ echo $@ >> $(GEN_IMAGES)
+	$(GNUPLOT) $<
 
 %.pdf: %.fig
 ifndef FIG2DEV

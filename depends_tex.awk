@@ -6,6 +6,8 @@ BEGIN {
 	BIB   = ""
 	# used pictures
 	PICS  = ""
+	# sty and cls
+	STY   = ""
 
 	CONTENT  = ""
 
@@ -39,7 +41,7 @@ TARGET=="" { TARGET=FILENAME }
 #\input{tex-datei}
 #\includegraphics{bild}
 	bibs  = "^bibliography$"
-	texs  = "^include$|^input$"
+	texs  = "^include$|^input|^lstinputlisting$"
 	pics  = "^includegraphics$|^picx$|^scalepicx$"
 	
 	# entferne optionale parameter
@@ -96,8 +98,24 @@ TARGET=="" { TARGET=FILENAME }
 		# expr is a picture
 		if ( match(cmd[0], pics) == 1)
 		{
+			pdffile = cmd[1] ".pdf"
+			if (system("test -f " pdffile) == 0) {
+				TEX = TEX "\t" pdffile "\\\n"
+			}
 			PICS = PICS " " cmd[1] 
 			print cmd[1] ".pdf:"
+			continue
+		}
+
+		# expr is documentclass
+		if ( match(cmd[0], "^documentclass$") == 1)
+		{
+			clsfile = cmd[1] ".cls"
+			if (system("test -f " clsfile) == 0) {
+				#print "#cls", clsfile
+				TEX = TEX "\t" clsfile "\\\n"
+				print clsfile ":"
+			}
 			continue
 		}
 	}
