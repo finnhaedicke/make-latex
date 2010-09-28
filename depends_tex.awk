@@ -41,7 +41,8 @@ TARGET=="" { TARGET=FILENAME }
 #\input{tex-datei}
 #\includegraphics{bild}
 	bibs  = "^bibliography$"
-	texs  = "^include$|^input|^lstinputlisting$"
+	texs  = "^include$|^input"
+	lsts  = "^lstinputlisting$"
 	pics  = "^includegraphics$|^picx$|^scalepicx$"
 	
 	# entferne optionale parameter
@@ -92,6 +93,15 @@ TARGET=="" { TARGET=FILENAME }
 			TEX = TEX "\t" _filename "\\\n"
 			print _filename ":"
 			callfile(_filename)
+			continue
+		}
+		# expr is lstlisting include
+		if ( match(cmd[0], lsts) == 1)
+		{
+			_filename = cmd[1];
+			#print "#t",FILENAME ":found incl", cmd[1]
+			TEX = TEX "\t" _filename "\\\n"
+			print _filename ":"
 			continue
 		}
 
