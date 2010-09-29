@@ -52,7 +52,7 @@ PDFLATEX_CMD := $(PDFLATEX) \
 	-halt-on-error   \
 	-interaction=batchmode \
 
-RERUN := Rerun to get cross-references right
+RERUN := Rerun to get cross-references right\|There were undefined references
 DEP_TEX:=  $(dir $(lastword $(MAKEFILE_LIST)))/depends_tex.awk
 
 # TEX dependencies $(DEP_TEX)
@@ -61,27 +61,34 @@ DEP_TEX:=  $(dir $(lastword $(MAKEFILE_LIST)))/depends_tex.awk
 
 # PDF
 %.pdf: %.tex  $(REALPICS) $(STYLES) $(LATEX_INDEXFILE)
-	@ awk -f $(DEP_TEX) $*.tex > $*.d
+	@ awk -f $(DEP_TEX) $*.tex > $*.d &
 ifndef PDFLATEX
 	$(error you need to have pdflatex installed and in your path)
 endif
 	@ $(PDFLATEX_CMD) $* >/dev/null || { cat $*.log; false; }
 	-@ bibtex $*
-	@ $(PDFLATEX_CMD) $* >/dev/null || { cat $*.log; false; }
+	@ if  grep -e '$(RERUN)' $*.log; then \
+	    echo "LaTeX rerun"; \
+	    $(PDFLATEX_CMD) $* >/dev/null || { cat $*.log; false; } \
+	  fi
 ifdef LATEX_INDEXFILE
 	-@ makeindex -c -g -s $ $*
-	@ $(PDFLATEX_CMD) $* >/dev/null || { cat $*.log; false; }
+	 @ if grep -e '$(RERUN)' $*.log; then \
+	    echo "LaTeX rerun"; \
+	    $(PDFLATEX_CMD) $* >/dev/null || { cat $*.log; false; } \
+	  fi
 endif
 	@latex_count=10 ; \
 	  while \
-	  	   grep -q '$(RERUN)' $*.log \
+	  	   grep -e '$(RERUN)' $*.log \
 		&& [ $$latex_count -gt 0 ] ;\
 	    do \
+	    	echo "LaTeX rerun"; \
 	      $(PDFLATEX_CMD) $* >/dev/null || { cat $*.log; false; }; \
 	      latex_count=`expr $$latex_count - 1` ; \
 	    done
 	@cat $*.log
-	@echo $^
+	@echo "based on: $^"
 
 
 
