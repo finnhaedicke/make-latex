@@ -47,7 +47,8 @@ REALPICS= \
 #############################
 
 PDFLATEX := $(shell which pdflatex)
-PDFLATEX_CMD := $(PDFLATEX) \
+PDFLATEX_CMD = $(PDFLATEX) \
+	-output-directory=$(dir $*) \
 	-file-line-error \
 	-halt-on-error   \
 	-interaction=batchmode \
@@ -68,27 +69,27 @@ endif
 	@ $(PDFLATEX_CMD) $* >/dev/null || { cat $*.log; false; }
 	-@ bibtex $*
 	@ if  grep -e '$(RERUN)' $*.log; then \
-	    echo "LaTeX rerun"; \
+	    echo "LaTeX rerun $@"; \
 	    $(PDFLATEX_CMD) $* >/dev/null || { cat $*.log; false; } \
 	  fi
 ifdef LATEX_INDEXFILE
 	-@ makeindex -c -g -s $ $*
 	 @ if grep -e '$(RERUN)' $*.log; then \
-	    echo "LaTeX rerun"; \
+	    echo "LaTeX rerun $@"; \
 	    $(PDFLATEX_CMD) $* >/dev/null || { cat $*.log; false; } \
 	  fi
 endif
-	@latex_count=10 ; \
+	@latex_count=3 ; \
 	  while \
 	  	   grep -e '$(RERUN)' $*.log \
 		&& [ $$latex_count -gt 0 ] ;\
 	    do \
-	    	echo "LaTeX rerun"; \
+	    	echo "LaTeX rerun $@"; \
 	      $(PDFLATEX_CMD) $* >/dev/null || { cat $*.log; false; }; \
 	      latex_count=`expr $$latex_count - 1` ; \
-	    done
-	@cat $*.log
-	@echo "based on: $^"
+	    done || true;
+	@echo -e "\nDone, based on: $^\n"
+	@grep -e "Warning:\|Error:" $*.log || echo "No warnings."
 
 
 
@@ -119,7 +120,7 @@ ifndef GNUPLOT
 	$(error "You need gnuplot installed and in your path!")
 endif
 	@ echo $@ >> $(GEN_IMAGES)
-	$(GNUPLOT) $<
+	cd $(dir $<) && $(GNUPLOT) $(notdir $<)
 
 %.pdf: %.fig
 ifndef FIG2DEV
