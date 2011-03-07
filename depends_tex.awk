@@ -41,7 +41,7 @@ TARGET=="" { TARGET=FILENAME }
 #\input{tex-datei}
 #\includegraphics{bild}
 	bibs  = "^bibliography$"
-	texs  = "^include$|^input"
+	texs  = "^include$|^input$"
 	lsts  = "^lstinputlisting$"
 	pics  = "^includegraphics$|^picx$|^scalepicx$"
 	
@@ -99,7 +99,7 @@ TARGET=="" { TARGET=FILENAME }
 		if ( match(cmd[0], lsts) == 1)
 		{
 			_filename = cmd[1];
-			#print "#t",FILENAME ":found incl", cmd[1]
+			#print "#t",FILENAME ":found listing", cmd[1]
 			TEX = TEX "\t" _filename "\\\n"
 			print _filename ":"
 			continue
