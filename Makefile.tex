@@ -33,16 +33,6 @@ GEN_IMAGES := .generated_images
 endif
 
 
-### check images
-REALPICS= \
-	$(foreach pic,$(PICS), \
-		$(shell test -f $(pic) && echo $(pic) || \
-		      { test -f $(pic).png && echo $(pic).png  ||  \
-		      { test -f $(pic).jpg && echo $(pic).jpg ; } ||   \
-		      echo $(pic).pdf )\
-	)
-		
-
 #############################
 #############################
 
@@ -61,7 +51,7 @@ DEP_TEX:=  $(dir $(lastword $(MAKEFILE_LIST)))/depends_tex.awk
 	@ awk -f $(DEP_TEX) $*.tex > $*.d
 
 # PDF
-%.pdf: %.tex  $(REALPICS) $(STYLES) $(LATEX_INDEXFILE)
+%.pdf: %.tex  $(STYLES) $(LATEX_INDEXFILE)
 	@ awk -f $(DEP_TEX) $*.tex > $*.d &
 ifndef PDFLATEX
 	$(error you need to have pdflatex installed and in your path)
@@ -101,9 +91,7 @@ clean-latex: $(GEN_IMAGES)
 
 .PHONY: all clean ps pdf everything report
 .SUFFIXES: .dvi .ps .pdf .tex .d
-.SECONDARY: \
-	$(PICS:=.eps) $(PICS:=.pdf) $(PICS:=.svg) \
-	$(TARGET).ps  \
+.SECONDARY: $(PICS:.pic=.eps) $(PICS:.pic=.pdf) $(PICS:.pic=.svg)
 
 
 QE:=2>/dev/null
@@ -113,7 +101,11 @@ INKSCAPE := $(shell which inkscape $(QE))
 CONVERT  := $(shell which convert  $(QE))
 FIG2DEV  := $(shell which fig2dev  $(QE))
 GNUPLOT  := $(shell which gnuplot  $(QE))
-EPS2PDF  := $(shell which a2ping   $(QE) || which epstopdf $(QE) )
+EPS2PDF  := $(shell which epstopdf $(QE) || which a2ping   $(QE)  )
+
+%.pic: %.pdf
+	@ echo $@ >> $(GEN_IMAGES)
+	@ touch $@	
 
 %.eps: %.plot %.dat
 ifndef GNUPLOT
@@ -166,7 +158,7 @@ endif
 	$(EPS2PDF) $< 
 
 $(GEN_IMAGES):
-	mkdir -p $(dir $@)
-	touch $@
+	@mkdir -p $(dir $@)
+	@touch $@
 
 # vim: ft=make

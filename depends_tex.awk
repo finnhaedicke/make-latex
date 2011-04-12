@@ -9,33 +9,23 @@ BEGIN {
 	# sty and cls
 	STY   = ""
 
-	CONTENT  = ""
-
 	TARGET= ""
-
-	LASTFILE=""
 }
-
-#LASTFILE!=FILENAME {
-	#print "#f NEW FILE:", FILENAME
-	#LASTFILE=FILENAME
-#}
 
 TARGET=="" { TARGET=FILENAME }
 
-#entferne kommentare
-/%/ {  sub("%.*","") }
-
-# sammle tex;
-{ 
-	#CONTENT = CONTENT  " " $0
+{
+	evaluate_file(FILENAME)
+	nextfile
 }
 
+function evaluate_file (file) {
 
-
-{ 
-	CONTENT = $0 "\n"
-
+	CONTENT=$0
+	while ( getline > 0 ) {
+		sub("%.*","")
+		CONTENT = (CONTENT " " $0)
+	}
 #\bibliography{bib-datei}
 #\include{tex-datei}
 #\input{tex-datei}
@@ -43,7 +33,7 @@ TARGET=="" { TARGET=FILENAME }
 	bibs  = "^bibliography$"
 	texs  = "^include$|^input$"
 	lsts  = "^lstinputlisting$"
-	pics  = "^includegraphics$|^picx$|^scalepicx$"
+	pics  = "^includegraphics$"
 	
 	# entferne optionale parameter
 	opt = "\\[[^][]*\\]"
@@ -57,7 +47,6 @@ TARGET=="" { TARGET=FILENAME }
 	#iterate over all tex commands  (without \, mwith {})
 	for ( i in arr)
 	{
-
 		# skip empty lines
 		if(arr[i] ~ "^[ \t]*$")
 			continue;
@@ -109,11 +98,19 @@ TARGET=="" { TARGET=FILENAME }
 		if ( match(cmd[0], pics) == 1)
 		{
 			pdffile = cmd[1] ".pdf"
-			if (system("test -f " pdffile) == 0) {
-				TEX = TEX "\t" pdffile "\\\n"
+			if (system("test -f " cmd[1]) == 0) {
+				TEX = TEX "\t" cmd[1] "\\\n"
+				print cmd[1] ":"
+				continue
 			}
-			PICS = PICS " " cmd[1] 
-			print cmd[1] ".pdf:"
+			else if (system("test -f " pdffile) == 0) {
+				TEX = TEX "\t" pdffile "\\\n"
+				print cmd[1] ".pdf:"
+				continue
+			}
+			TEX = TEX "\t" cmd[1] ".pic\\\n"
+			print cmd[1] ".pic:"
+			PICS = PICS " " cmd[1] ".pic"
 			continue
 		}
 
@@ -131,9 +128,8 @@ TARGET=="" { TARGET=FILENAME }
 	}
 
 
-
 }
-
+#
 END {
 	#gsub("^ *","", BIB)
 #	if(BIB != "")
@@ -194,17 +190,16 @@ function splitTex(s, ret)  {
 	ret["argc"]=argc
 
 	#print "#! ", s, ":"  ret[0],  argv
-
 }
 
 function callfile(f) {
 	#print "#cf", ARGC
-	if (system("test -f " f) == 0) {
+	if (system("test -r " f) == 0) {
 		ARGV[ARGC]=f
 		ARGC++
 		#print "#cf", ARGC, f
 		
 	} else {
-		#print "#cf File " f "does not exist."
+		#print "#cf File " f " does not exist."
 	}
 }
